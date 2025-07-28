@@ -48,7 +48,7 @@ conda install pytorch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 pytorch-cuda=
 We release both the dataset and the processing code to facilitate reproducibility.
 
 - 📄 **Instructions:** Please follow the guide in [`egoscaler/data/README.md`](./egoscaler/data/README.md).
-- 📦 **Dataset:** *(Coming soon.)*
+- 📦 **Dataset:** [Google Drive](https://drive.google.com/file/d/1Ek0DSwjhJ_NMVakace_Myxnhfgui_3Dc/view?usp=sharing).
 
 ## Train/Eval Models
 

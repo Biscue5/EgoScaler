@@ -8,7 +8,7 @@
 > *Paper at [arxiv](https://arxiv.org/abs/2506.03605)*  
 
 ## News
-- [ ] Release codes and dataset. *(Code cleanup in progress)*
+- [x] Release codes and dataset.
 - [x] `05.04.2025`: Selected as Highlight Paper!
 - [x] `27.02.2025`: Accepted at CVPR 2025!
 
@@ -55,7 +55,7 @@ We release both the dataset and the processing code to facilitate reproducibilit
 We provide both training/evaluation code and pretrained checkpoints for reproducibility.
 
 - 🧠 **Code:** Please follow the guide in [`egoscaler/models/README.md`](./egoscaler/models/README.md).
-- 📍 **Checkpoints:** *(Coming soon.)*
+- 📍 **Checkpoints:** [Google Drive](https://drive.google.com/file/d/1pYn1hHkCZgYE-9agp3ysStb0-vZdy1ok/view?usp=sharing)
 
 ## Demo
 1. Visualize extracted trajectories.

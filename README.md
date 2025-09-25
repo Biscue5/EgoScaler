@@ -55,7 +55,7 @@ We release both the dataset and the processing code to facilitate reproducibilit
 We provide both training/evaluation code and pretrained checkpoints for reproducibility.
 
 - 🧠 **Code:** Please follow the guide in [`egoscaler/models/README.md`](./egoscaler/models/README.md).
-- 📍 **Checkpoints:** [Google Drive](https://drive.google.com/file/d/1pYn1hHkCZgYE-9agp3ysStb0-vZdy1ok/view?usp=sharing)
+- 📍 **Checkpoints:** [Google Drive](https://drive.google.com/drive/folders/1OVmSxhHvZXxdvpyHRpjDokRQuE1dLbNT?usp=drive_link) 
 
 ## Demo
 1. Visualize extracted trajectories.

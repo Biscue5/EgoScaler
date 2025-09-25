@@ -58,14 +58,32 @@ for dir_name in directories:
 random.seed(0)
 random.shuffle(train_instances)
 
+# e.g., validation set 
+# split_ratio = 0.8
+# split_index = int(len(train_instances) * split_ratio)
+# train_instances_split = train_instances[:split_index]
+# val_instances_split = train_instances[split_index:]
+
 train = []
 for instance in train_instances:
    instance = instance.replace(f'{dataset_dir}/trajs/', '')
    instance = instance.replace('.pkl', '')    
    train.append(instance)
+   
+# val = []
+# for instance in val_instances_split:
+#    instance = instance.replace(f'{dataset_dir}/trajs/', '')
+#    instance = instance.replace('.pkl', '')    
+#    val.append(instance)
         
 print('train size', len(train))
+# print('val size', len(val)) 
 train_data = coco_formatter(train, dataset_dir)
+# val_data = coco_formatter(val, dataset_dir)
+
 
 with open(f'{save_dir}/train.json', 'w') as f:
     json.dump(train_data, f)
+
+# with open(f'{save_dir}/val.json', 'w') as f:
+#     json.dump(val_data, f)

@@ -3,7 +3,7 @@ import numpy as np
 import json
 from egoscaler.models.utils.dataset_base import DatasetBase
 from egoscaler.configs import DatasetConfig as dataset_cfg
-from egoscaler.models.utils.traj_utils import preprocess_traj, smoothing_traj
+from egoscaler.models.utils.traj_utils import preprocess_traj
 import os
 from tqdm import tqdm
 import re
@@ -36,7 +36,6 @@ class CustomDataset(DatasetBase):
         self.data_dir = args.data_dir
         self.split = split
         
-        self.smooth_traj = args.smooth_traj
         self.num_steps = args.num_steps
         self.do_norm = args.do_norm
         self.do_standard = args.do_standard
@@ -91,8 +90,6 @@ class CustomDataset(DatasetBase):
         for item in tqdm(range(len(self.annotations)), desc="Computing mean and std..."):
             _, _, _, traj = super().__getitem__(item=item)
             traj = preprocess_traj(traj, num_steps=self.num_steps)
-            if self.smooth_traj:
-                traj = smoothing_traj(traj)
             all_trajs.append(traj)
             
         all_trajs = np.array(all_trajs)
@@ -192,3 +189,82 @@ class CustomDataset(DatasetBase):
             'trajectory_masks': traj_masks,
             'max_abs': torch.stack([torch.tensor(ma) for ma in max_obs_list])
         }
+        
+    def __getitem__(self, item):
+        
+        image_id, pil_image, desc, traj = super().__getitem__(item=item)
+        
+        data: dict = self.id2data[image_id.item()]
+        dataset_name: str = data['dataset_name']
+        video_uid: str = data['video_uid']
+        file_name: str = data['file_name']
+        
+        pcrgb = np.load(f'{self.root_dir}/pcrgbs/{dataset_name}/{video_uid}/{file_name}.npy')
+        pcrgb = pc_norm(pcrgb)
+        pcrgb = torch.from_numpy(pcrgb).to(torch.float32)
+        
+        if self.split in ["h2o_test", "hot3d_test"]:
+            traj[:, 3:] -= traj[0, 3:]
+            
+        traj[:, 3:] = (traj[:, 3:] + np.pi) % (2 * np.pi) - np.pi
+        
+        traj, traj_mask = preprocess_traj(
+            traj, num_steps=self.num_steps, 
+            return_padding_mask=True
+        )
+            
+        gt_traj = torch.from_numpy(traj).float()
+        gt_traj_mask = torch.from_numpy(traj_mask).bool()
+        
+        max_abs = np.zeros([traj.shape[1]])
+        
+        if self.do_norm:
+            
+            traj[:, 0] = (traj[:, 0] - dataset_cfg.min_x) / (dataset_cfg.max_x - dataset_cfg.min_x)
+            traj[:, 1] = (traj[:, 1] - dataset_cfg.min_y) / (dataset_cfg.max_y - dataset_cfg.min_y)
+            traj[:, 2] = (traj[:, 2] - dataset_cfg.min_z) / (dataset_cfg.max_z - dataset_cfg.min_z)
+            
+            traj[:, [0,1,2]] = 2 * traj[:, [0,1,2]] - 1
+            
+            traj[:, [3,4,5]] /= np.pi # [-1, 1]
+            
+        elif self.do_standard:
+            traj = (traj - self.mean) / self.std
+            
+            max_abs = np.max(np.abs(traj), axis=0) 
+            max_abs[max_abs == 0] = 1  
+            
+            traj = traj / max_abs  # [-1, 1]
+            
+        assert np.all(traj >= -1) and np.all(traj <= 1)
+            
+        traj_list = []
+        for tra in traj:
+            (x, y, z, rx, ry, rz) = self.discretize_action(tra, num_bins=self.args.num_bins)
+            
+            x, y, z, rx, ry, rz = (
+                RT2_TOKEN_TEMPLATE.format(p=x),
+                RT2_TOKEN_TEMPLATE.format(p=y),
+                RT2_TOKEN_TEMPLATE.format(p=z),
+                RT2_TOKEN_TEMPLATE.format(p=rx),
+                RT2_TOKEN_TEMPLATE.format(p=ry),
+                RT2_TOKEN_TEMPLATE.format(p=rz)
+            )
+            coord = f"{x} {y} {z} {rx} {ry} {rz}"
+            traj_list.append(coord)
+    
+        traj_str = f"{' '+TIMESTEP_SEP_TOKEN+' '}".join(traj_list)
+        traj_str = TIMESTEP_START_TOKEN + f"{' '+traj_str+' '}" + TIMESTEP_END_TOKEN
+        
+        desc = self.prompt["desc"].format(desc=desc)
+        traj_str = self.prompt["traj"].format(traj=traj_str)
+        
+        desc_tokens = self.tokenizer.encode(desc, add_special_tokens=False) + \
+                    [self.tokenizer.eos_token_id]
+        traj_tokens = self.tokenizer.encode(traj_str, add_special_tokens=False) + \
+                    [self.tokenizer.eos_token_id]
+         
+        desc_tokens, desc_masks = self.get_padding(desc_tokens, self.max_desc_token, pad_token_id=self.tokenizer.pad_token_id)
+        traj_tokens, traj_masks = self.get_padding(traj_tokens, self.max_traj_token, pad_token_id=self.tokenizer.pad_token_id)
+        
+        return image_id, pcrgb, desc_tokens, desc_masks, traj_tokens, traj_masks, gt_traj, gt_traj_mask, max_abs

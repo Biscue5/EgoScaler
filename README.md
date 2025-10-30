@@ -49,6 +49,9 @@ We release both the dataset and the processing code to facilitate reproducibilit
 
 - 📄 **Instructions:** Please follow the guide in [`egoscaler/data/README.md`](./egoscaler/data/README.md).
 - 📦 **Dataset:** [Google Drive](https://drive.google.com/file/d/1Ek0DSwjhJ_NMVakace_Myxnhfgui_3Dc/view?usp=sharing).
+- 📦 **HOT3D Test Data** [Google Drive](https://drive.google.com/file/d/1Fps6rhRkf9WVFmcVxVv2tqD4VMfvkFwa/view?usp=sharing) 
+
+(Note: The test set differs from the one used in the paper, since some original data were unavailable at that time. We later reconstructed it, resulting in a larger evaluation set.)
 
 ## Train/Eval Models
 

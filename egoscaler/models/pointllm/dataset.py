@@ -190,6 +190,16 @@ class CustomDataset(DatasetBase):
             'max_abs': torch.stack([torch.tensor(ma) for ma in max_obs_list])
         }
         
+    def get_padding(self, tokens, max_length, pad_token_id=0):
+        len_input_ids = len(tokens)
+        if len_input_ids > max_length:
+            tokens = tokens[:max_length]
+            len_input_ids = max_length 
+        tokens += [pad_token_id] * (max_length - len_input_ids)
+        attention_mask = [1] * len_input_ids + [0] * (max_length - len_input_ids)
+        
+        return tokens, attention_mask
+        
     def __getitem__(self, item):
         
         image_id, pil_image, desc, traj = super().__getitem__(item=item)

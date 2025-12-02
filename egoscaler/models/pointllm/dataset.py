@@ -190,6 +190,66 @@ class CustomDataset(DatasetBase):
             'max_abs': torch.stack([torch.tensor(ma) for ma in max_obs_list])
         }
         
+    def detokenize_traj(self, traj_str: str, num_bins: int = 256, max_abs: np.ndarray = None) -> np.ndarray:
+
+        # Remove timestep start and end tokens
+        if traj_str.startswith(TIMESTEP_START_TOKEN):
+            traj_str = traj_str[len(TIMESTEP_START_TOKEN):]
+        if traj_str.endswith(TIMESTEP_END_TOKEN):
+            traj_str = traj_str[:-len(TIMESTEP_END_TOKEN)]
+
+        # Split by timestep
+        time_steps = traj_str.split(TIMESTEP_SEP_TOKEN)
+
+        # Build regex pattern to extract discretized integer from RT2_TOKEN_TEMPLATE
+        pattern_str = re.escape(RT2_TOKEN_TEMPLATE).replace(re.escape("{p}"), r"([-0-9]+)")
+        pattern = re.compile(pattern_str)
+
+        traj_normalized = []
+        for ts in time_steps:
+            # Extract 6 discretized values per timestep
+            matches = pattern.findall(ts)
+            if len(matches) != 6:
+                continue
+
+            coords = []
+            for d_str in matches:
+                d = int(d_str)
+                # Recover bin center in normalized [-1,1] range
+                val = -1 + (d + 0.5) * (2 / num_bins)
+                coords.append(val)
+
+            traj_normalized.append(coords)
+
+        traj_normalized = np.array(traj_normalized)
+        if traj_normalized.shape[0] == 0:
+            return None
+
+        # Inverse normalization
+        if self.do_norm:
+            # Position: [-1,1] → [0,1] → original scale
+            pos = traj_normalized[:, :3]
+            pos = (pos + 1) / 2
+            pos[:, 0] = pos[:, 0] * (dataset_cfg.max_x - dataset_cfg.min_x) + dataset_cfg.min_x
+            pos[:, 1] = pos[:, 1] * (dataset_cfg.max_y - dataset_cfg.min_y) + dataset_cfg.min_y
+            pos[:, 2] = pos[:, 2] * (dataset_cfg.max_z - dataset_cfg.min_z) + dataset_cfg.min_z
+
+            # Rotation: multiply by π to restore angle range
+            rot = traj_normalized[:, 3:] * np.pi
+
+            traj_rec = np.concatenate([pos, rot], axis=-1)
+
+        elif self.do_standard:
+            if max_abs is None:
+                raise ValueError("max_abs must be provided when using do_standard.")
+
+            # First undo max_abs scaling, then undo standardization
+            traj_rec = traj_normalized * max_abs
+            traj_rec = traj_rec * self.std + self.mean
+
+        return traj_rec
+
+
     def get_padding(self, tokens, max_length, pad_token_id=0):
         len_input_ids = len(tokens)
         if len_input_ids > max_length:
